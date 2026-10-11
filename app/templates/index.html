@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TripViaReel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo" aria-hidden="true">▶</span> TripViaReel</div>
+    <p class="tag">Save the reel. Discover the places. Plan the trip.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel" aria-label="Plan builder">
+
+      <div class="card" id="card-reel">
+        <h2><span class="step">1</span> Your reel</h2>
+        <label for="reel-url">Instagram reel link <span class="opt">optional</span></label>
+        <input id="reel-url" type="url" placeholder="https://www.instagram.com/reel/…" autocomplete="off">
+        <p class="hint">Instagram usually blocks automatic access. If the link can't be read, use a screenshot, screen recording or the caption below.</p>
+
+        <label for="caption">Caption or place names <span class="opt">optional</span></label>
+        <textarea id="caption" rows="3" placeholder="Paste the caption, e.g. “Hyderabad in a day: Charminar, Golconda Fort, Paradise Biryani”"></textarea>
+
+        <label for="files">Screenshots or video <span class="opt">PNG, JPG, MP4, MOV, WEBM</span></label>
+        <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose files to upload">
+          <input id="files" type="file" multiple accept="image/*,video/mp4,video/quicktime,video/webm,.mkv,.mov,.mp4,.webm" hidden>
+          <span>Drop files here or <u>browse</u></span>
+        </div>
+        <ul id="file-list" class="files"></ul>
+
+        <button id="btn-analyze" class="btn primary">Find places</button>
+        <div id="analyze-msg" class="msg" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="card hidden" id="card-places">
+        <h2><span class="step">2</span> Places found</h2>
+        <ul id="candidates" class="cands"></ul>
+        <div id="unresolved" class="notice hidden"></div>
+        <details class="add">
+          <summary>Add a place manually</summary>
+          <div class="row">
+            <select id="add-select" aria-label="Place to add"></select>
+            <button id="btn-add" class="btn small" type="button">Add</button>
+          </div>
+        </details>
+        <details class="add" id="ocr-details">
+          <summary>Text read from your media</summary>
+          <pre id="ocr-text"></pre>
+        </details>
+      </div>
+
+      <div class="card hidden" id="card-prefs">
+        <h2><span class="step">3</span> Trip preferences</h2>
+        <div class="row two">
+          <div>
+            <label for="budget">Budget (₹)</label>
+            <input id="budget" type="number" min="0" step="100" value="2500" inputmode="numeric">
+          </div>
+          <div>
+            <label for="days">Days</label>
+            <input id="days" type="number" min="1" max="7" value="1" inputmode="numeric">
+          </div>
+        </div>
+        <label>Interests</label>
+        <div id="interests" class="chips" role="group" aria-label="Interests"></div>
+        <button id="btn-plan" class="btn primary">Plan my trip</button>
+        <div id="plan-msg" class="msg" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="result" aria-label="Itinerary">
+      <div id="map" aria-label="Route map"></div>
+      <div id="empty" class="empty">
+        <h3>Your itinerary appears here</h3>
+        <p>Start with a screenshot, a screen recording or the caption of a travel reel.</p>
+      </div>
+      <div id="out" class="hidden"></div>
+    </section>
+  </main>
+
+  <footer class="foot">Costs, entry fees and travel times are approximate planning estimates. Map data © OpenStreetMap contributors.</footer>
+
+  <script src="{{ url_for('static', filename='vendor/leaflet.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
