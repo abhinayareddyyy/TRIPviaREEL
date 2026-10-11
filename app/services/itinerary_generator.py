@@ -15,7 +15,12 @@ def _fmt_clock(hours: float) -> str:
     return f"{total_min // 60 % 24:02d}:{total_min % 60:02d}"
 
 
-def split_into_days(order: Sequence[Place], leg_km: Dict[str, float], day_hours: float) -> List[List[Place]]:
+def split_into_days(
+    order: Sequence[Place],
+    leg_km: Dict[str, float],
+    day_hours: float,
+    origin_km: float = 0.0,
+) -> List[List[Place]]:
     """Greedily fill each day with consecutive stops until its time window is used.
 
     ``leg_km[place_id]`` is the road distance from the previous stop. The first
@@ -24,7 +29,12 @@ def split_into_days(order: Sequence[Place], leg_km: Dict[str, float], day_hours:
     days: List[List[Place]] = []
     used, cur = 0.0, []
     for p in order:
-        inbound = 0.0 if not cur else bo.travel_minutes(leg_km.get(p.id, 0.0)) / 60.0
+        inbound = (
+            bo.travel_minutes(origin_km) / 60.0
+            if not days and not cur
+            else 0.0 if not cur
+            else bo.travel_minutes(leg_km.get(p.id, 0.0)) / 60.0
+        )
         need = inbound + p.visit_hours
         if cur and used + need > day_hours + 1e-9:
             days.append(cur)
@@ -37,12 +47,13 @@ def split_into_days(order: Sequence[Place], leg_km: Dict[str, float], day_hours:
     return days
 
 
-def _evaluate(order: List[Place], route: dict, days_requested: int) -> dict:
+def _evaluate(order: List[Place], route: dict, days_requested: int, origin_id: Optional[str] = None) -> dict:
     leg_km = {l["to"]: l["km"] for l in route["legs"]}
-    day_lists = split_into_days(order, leg_km, bo.DAY_HOURS)
+    origin_km = next((l["km"] for l in route["legs"] if l["from"] == origin_id), 0.0)
+    day_lists = split_into_days(order, leg_km, bo.DAY_HOURS, origin_km)
     entry = sum(p.spend for p in order if not p.is_food)
     food = sum(p.spend for p in order if p.is_food)
-    km = 0.0
+    km = origin_km
     for d in day_lists:
         for p in d[1:]:
             km += leg_km.get(p.id, 0.0)
@@ -64,6 +75,7 @@ def generate_itinerary(
     interests: Sequence[str] = (),
     mentions: Optional[Dict[str, int]] = None,
     start_place: Optional[str] = None,
+    origin_place: Optional[str] = None,
 ) -> dict:
     """Select, order and schedule destinations.
 
@@ -97,7 +109,11 @@ def generate_itinerary(
     candidates = by_city[city]
 
     # road graph over *all* known places in the city so A* can route via other landmarks
-    graph = build_graph(gazetteer.in_city(city))
+    origin = gazetteer.get(origin_place) if origin_place else None
+    graph_places = list(gazetteer.in_city(city))
+    if origin and origin.id not in {p.id for p in graph_places}:
+        graph_places.append(origin)
+    graph = build_graph(graph_places)
     values = {p.id: bo.place_value(p, interests, mentions.get(p.id, 1)) for p in candidates}
 
     # --- 2-4. selection with repair loop
@@ -114,10 +130,10 @@ def generate_itinerary(
         sel = bo.select_places(pool, budget - reserve_cost, days * bo.DAY_HOURS - reserve_hours, values)
         if not sel.chosen:
             break
-        start = start_place if start_place in {p.id for p in sel.chosen} else None
+        start = start_place if start_place in {p.id for p in sel.chosen} else (origin.id if origin else None)
         route = plan_route(graph, [p.id for p in sel.chosen], start)
-        order = [gazetteer.get(i) for i in route["order"]]
-        ev = _evaluate(order, route, days)
+        order = [gazetteer.get(i) for i in route["order"] if not origin or i != origin.id]
+        ev = _evaluate(order, route, days, start)
         ok = ev["total"] <= budget + 1e-6 and ev["days_used"] <= days
         if ok:
             best = (sel, route, order, ev)
@@ -156,7 +172,8 @@ def generate_itinerary(
         out_stops, path_coords, day_km, day_cost = [], [], 0.0, 0.0
         for s_idx, p in enumerate(stops):
             leg = leg_by_to.get(p.id)
-            km = leg["km"] if (s_idx > 0 and leg) else 0.0
+            is_origin_leg = s_idx == 0 and d_idx == 1 and origin
+            km = leg["km"] if (s_idx > 0 or is_origin_leg) and leg else 0.0
             tmin = bo.travel_minutes(km)
             clock += tmin / 60.0
             arrive = clock
@@ -164,10 +181,11 @@ def generate_itinerary(
             tcost = bo.travel_cost(km)
             day_km += km
             day_cost += p.spend + tcost
-            if s_idx > 0 and leg:
+            if (s_idx > 0 or is_origin_leg) and leg:
                 for node in leg["path"]:
                     gp = gazetteer.get(node)
-                    path_coords.append([gp.lat, gp.lon])
+                    if gp:
+                        path_coords.append([gp.lat, gp.lon])
             elif s_idx == 0:
                 path_coords.append([p.lat, p.lon])
             day_stops_total += 1
@@ -178,7 +196,8 @@ def generate_itinerary(
                 "visit_hours": p.visit_hours, "cost": round(p.spend),
                 "travel_km": round(km, 1), "travel_min": int(round(tmin)),
                 "travel_cost": round(tcost),
-                "via": [gazetteer.get(n).name for n in leg["path"][1:-1]] if (s_idx > 0 and leg) else [],
+                "via": [gazetteer.get(n).name for n in leg["path"][1:-1] if gazetteer.get(n)]
+                if (s_idx > 0 or is_origin_leg) and leg else [],
             })
         day_out.append({
             "day": d_idx, "stops": out_stops, "km": round(day_km, 1),
@@ -196,6 +215,7 @@ def generate_itinerary(
 
     return {
         "city": city,
+        "origin": origin.to_dict() if origin else None,
         "budget": round(budget),
         "days_requested": days,
         "days_used": ev["days_used"],

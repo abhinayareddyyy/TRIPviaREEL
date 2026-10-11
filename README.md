@@ -27,6 +27,7 @@ Travel reels show several destinations but give no plan. Viewers must work out t
 | ✅ | Multi-day plans | Days are filled in order (09:00-19:00 window by default) |
 | ✅ | Expense estimate | Entry/activities, food, local transport, daily allowance, all shown as estimates |
 | ✅ | Interactive dashboard | Leaflet map with numbered stops and per-day route lines, timeline, cost breakdown |
+| ✅ | Personal starting location | Choose your starting location from the offline place catalog; travel to the first destination is included in the route, schedule and budget |
 | ✅ | Saved trips | Plans are stored in SQLite and can be reopened with `/?trip=<id>` |
 
 ## How It Works
@@ -139,7 +140,7 @@ python -m pytest -q
 
 1. **Your reel:** paste the reel link (optional), paste the caption, and/or drop screenshots or a screen recording of the reel.
 2. **Places found:** tick the places you want. Low-confidence fuzzy matches (below 90%) and ambiguous matches start unticked. You can add any known place manually.
-3. **Trip preferences:** set budget (₹), days, and interests, then **Plan my trip**.
+3. **Trip preferences:** optionally choose your starting location, then set budget (₹), days, and interests, and click **Plan my trip**. The first travel leg from your starting location is included in the estimate.
 
 ### Example
 

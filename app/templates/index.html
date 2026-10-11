@@ -65,6 +65,11 @@
             <input id="days" type="number" min="1" max="7" value="1" inputmode="numeric">
           </div>
         </div>
+        <label for="origin-place">Your starting location <span class="opt">optional</span></label>
+        <select id="origin-place">
+          <option value="">Choose a known location</option>
+        </select>
+        <p class="hint">Travel from here to the first destination is included in the route, time and budget.</p>
         <label>Interests</label>
         <div id="interests" class="chips" role="group" aria-label="Interests"></div>
         <button id="btn-plan" class="btn primary">Plan my trip</button>

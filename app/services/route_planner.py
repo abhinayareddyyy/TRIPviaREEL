@@ -94,6 +94,12 @@ def best_order(ids: Sequence[str], dist, start: Optional[str] = None) -> List[st
     permutation is checked; beyond that nearest-neighbour + 2-opt is used.
     """
     ids = list(ids)
+    if start and start not in ids:
+        if len(ids) <= EXACT_ORDER_LIMIT:
+            best = min(ids, key=lambda i: dist[(start, i)][0])
+            rest = [i for i in ids if i != best]
+            return [start, best] + rest if rest else [start, best]
+        ids = [start] + ids
     if len(ids) <= 2:
         if start and start in ids and ids[0] != start:
             ids.reverse()
@@ -141,7 +147,8 @@ def plan_route(g: Graph, ids: Sequence[str], start: Optional[str] = None) -> dic
     """Order the stops and return A* legs between consecutive stops."""
     if not ids:
         return {"order": [], "legs": [], "total_km": 0.0}
-    dist = distance_matrix(g, ids)
+    route_ids = list(dict.fromkeys(([start] if start else []) + list(ids)))
+    dist = distance_matrix(g, route_ids)
     order = best_order(ids, dist, start)
     legs = []
     for a, b in zip(order, order[1:]):

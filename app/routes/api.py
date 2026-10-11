@@ -141,14 +141,16 @@ def plan():
     interests = [i.lower() for i in interests if i.lower() in gz.valid_tags]
     mentions_raw = body.get("mentions") or {}
     mentions = {k: int(v) for k, v in mentions_raw.items() if isinstance(v, (int, float)) and k in gz.places} if isinstance(mentions_raw, dict) else {}
-    start = body.get("start_place") if isinstance(body.get("start_place"), str) else None
+    start = body.get("origin_place") if isinstance(body.get("origin_place"), str) else None
+    if start and gz.get(start) is None:
+        return _err(f"Unknown origin place id: {start}")
 
     try:
-        itinerary = generate_itinerary(gz, ids, budget, days, interests, mentions, start)
+        itinerary = generate_itinerary(gz, ids, budget, days, interests, mentions, origin_place=start)
     except InfeasibleTrip as exc:
         return _err(str(exc), 422)
 
-    req = {"place_ids": ids, "budget": budget, "days": days, "interests": interests}
+    req = {"place_ids": ids, "origin_place": start, "budget": budget, "days": days, "interests": interests}
     itinerary["trip_id"] = db.save_trip(current_app.config["DATABASE_PATH"], req, itinerary)
     return jsonify(itinerary)
 

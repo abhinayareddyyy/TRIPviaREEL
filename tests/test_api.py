@@ -178,6 +178,22 @@ def test_plan_end_to_end_and_saved(client):
     assert saved["result"]["totals"] == j["totals"] and saved["request"]["budget"] == 2500
 
 
+def test_plan_includes_origin_travel_and_saves_origin(client):
+    plan = {**PLAN, "origin_place": "hyd-charminar", "place_ids": ["hyd-golconda", "hyd-paradise"]}
+    r = client.post("/api/plan", json=plan)
+    j = r.get_json()
+    assert r.status_code == 200
+    assert j["origin"]["id"] == "hyd-charminar"
+    assert j["totals"]["km"] > 0
+    saved = client.get(f"/api/trips/{j['trip_id']}").get_json()
+    assert saved["request"]["origin_place"] == "hyd-charminar"
+
+
+def test_plan_rejects_unknown_origin(client):
+    r = client.post("/api/plan", json={**PLAN, "origin_place": "not-a-place"})
+    assert r.status_code == 400 and "origin" in r.get_json()["error"].lower()
+
+
 def test_full_pipeline_screenshot_to_itinerary(client, tmp_path):
     img = make_screenshot(tmp_path / "s.png", ["Charminar", "Golconda Fort", "Paradise Biryani"])
     cands = upload(client, img, "s.png").get_json()["candidates"]

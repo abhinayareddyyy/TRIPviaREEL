@@ -34,6 +34,12 @@
   function drawMap(it) {
     mapLayer.clearLayers();
     var bounds = [];
+    if (it.origin) {
+      L.marker([it.origin.lat, it.origin.lon], {
+        title: "Starting location: " + it.origin.name
+      }).addTo(mapLayer).bindPopup(el("strong", { text: "Starting location: " + it.origin.name }));
+      bounds.push([it.origin.lat, it.origin.lon]);
+    }
     it.days.forEach(function (day, di) {
       var color = DAY_COLORS[di % DAY_COLORS.length];
       if (day.path.length > 1) {
@@ -176,6 +182,10 @@
           b.setAttribute("aria-pressed", on ? "true" : "false");
           if (on) state.selectedInterests.add(name); else state.selectedInterests.delete(name);
         });
+        var origin = $("origin-place");
+        j.places.forEach(function (p) {
+          origin.appendChild(el("option", { value: p.id, text: p.name + " (" + p.city + ")" }));
+        });
         chips.appendChild(b);
       });
     });
@@ -207,6 +217,7 @@
       budget: Number($("budget").value),
       days: Number($("days").value),
       interests: Array.from(state.selectedInterests)
+      ,origin_place: $("origin-place").value || null
     };
     btn.disabled = true;
     say("plan-msg", "Planning…", "info");
@@ -297,6 +308,7 @@
       if (!t) return;
       $("budget").value = t.request.budget;
       $("days").value = t.request.days;
+      if (t.request.origin_place) $("origin-place").value = t.request.origin_place;
       renderItinerary(t.result);
     });
   }
