@@ -1,4 +1,4 @@
-# TripViaReel — AI-Powered Travel Itinerary Generator
+# TripViaReel : AI-Powered Travel Itinerary Generator
 
 **From Instagram Reels to personalized travel itineraries.**
 
